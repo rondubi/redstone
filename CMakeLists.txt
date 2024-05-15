@@ -4,7 +4,7 @@ project(redstone VERSION 0.1.0)
 find_package(fmt CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 
-add_executable(redstone "src/main.cpp")
+add_executable(redstone "src/main.cpp" "src/disk/disk.cpp")
 
 target_compile_features(redstone PRIVATE cxx_std_20)
 target_include_directories(redstone PRIVATE "include")
