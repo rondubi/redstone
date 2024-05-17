@@ -1,0 +1,49 @@
+#pragma once
+
+#include <chrono>
+#include <priority_queue>
+#include <functional>
+#include <thread>
+#include <mutex>
+
+namespace redstone::disk {
+    class time {
+    public:
+        // Scale: simulation time / real time
+        time(double scale);
+
+        // Sleep for a duration scaled to simulation time
+        void sleep(std::chrono::milliseconds sim_ms);
+
+        // Get the current time in simulation time
+        std::chrono::time_point<std::chrono::system_clock> clock_gettime();
+
+        // Set a timeout to call a function after a duration in simulation time
+        void set_timeout(std::chrono::milliseconds sim_ms, std::function<void()> callback);
+
+        // Process all timeouts that have expired
+        void process_timeouts();
+
+    private:
+        double scale;
+        std::chrono::time_point<std::chrono::system_clock> initial_time;
+
+        struct timeout {
+            std::chrono::time_point<std::chrono::system_clock> time;
+            std::function<void()> callback;
+
+            bool operator<(const timeout& other) const {
+                return time > other.time; // Reverse order
+            }
+        };
+
+        std::priority_queue<timeout> timeouts;
+        std::mutex timeout_mutex;
+
+        // Convert a duration in simulation time to real time
+        std::chrono::duration<double, std::milli> convert_to_real(std::chrono::milliseconds sim_ms);
+
+        // Convert a duration in real time to simulation time
+        std::chrono::duration<double, std::milli> convert_to_sim(std::chrono::milliseconds real_ms)
+    };
+}
