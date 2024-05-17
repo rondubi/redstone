@@ -1,0 +1,3 @@
+# Ignore shared libraries, these are compile artifacts too
+*.so
+
