@@ -1,4 +1,7 @@
 #include "redstone/time/time.hpp"
+#include <iostream>
+#include <iomanip>
+#include <sstream>
 
 namespace redstone::time {
     time_manager::time_manager(double scale) : scale(scale), initial_time(std::chrono::system_clock::now()) {}
@@ -20,10 +23,27 @@ namespace redstone::time {
         timeouts.push({clock_gettime() + sim_ms, callback});
     }
 
+    std::string time_point_to_string(const std::chrono::time_point<std::chrono::system_clock>& tp) {
+        // Convert time_point to time_t
+        std::time_t time = std::chrono::system_clock::to_time_t(tp);
+
+        // Convert time_t to tm as UTC time
+        std::tm tm = *std::gmtime(&time);
+
+        // Create a string stream to format the time
+        std::stringstream ss;
+        ss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+
+        return ss.str();
+    }
+
     void time_manager::process_timeouts() {
         std::unique_lock<std::mutex> lock(timeout_mutex);
         auto current_time = clock_gettime();
-        while (!timeouts.empty() && timeouts.top().time <= current_time) {
+        while (!timeouts.empty()) {
+            if (timeouts.top().time > current_time) {
+                break;
+            }
             auto timeout = timeouts.top();
             timeouts.pop();
             timeout.callback();
