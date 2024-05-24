@@ -1,16 +1,16 @@
 #pragma once
 
 #include <chrono>
-#include <priority_queue>
+#include <queue>
 #include <functional>
 #include <thread>
 #include <mutex>
 
-namespace redstone::disk {
-    class time {
+namespace redstone::time {
+    class time_manager {
     public:
         // Scale: simulation time / real time
-        time(double scale);
+        time_manager(double scale);
 
         // Sleep for a duration scaled to simulation time
         void sleep(std::chrono::milliseconds sim_ms);
@@ -39,11 +39,5 @@ namespace redstone::disk {
 
         std::priority_queue<timeout> timeouts;
         std::mutex timeout_mutex;
-
-        // Convert a duration in simulation time to real time
-        std::chrono::duration<double, std::milli> convert_to_real(std::chrono::milliseconds sim_ms);
-
-        // Convert a duration in real time to simulation time
-        std::chrono::duration<double, std::milli> convert_to_sim(std::chrono::milliseconds real_ms)
     };
 }

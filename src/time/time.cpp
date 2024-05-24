@@ -1,22 +1,26 @@
 #include "redstone/time/time.hpp"
 
 namespace redstone::time {
-    time::time(double scale) : scale(scale), initial_time(std::chrono::system_clock::now()) {}
+    time_manager::time_manager(double scale) : scale(scale), initial_time(std::chrono::system_clock::now()) {}
 
-    void time::sleep(std::chrono::milliseconds sim_ms) {
-        std::this_thread::sleep_for(convert_to_real(ms));
+    void time_manager::sleep(std::chrono::milliseconds sim_ms) {
+        auto real_ms = std::chrono::duration_cast<std::chrono::milliseconds>(sim_ms / scale);
+        std::this_thread::sleep_for(real_ms);
     }
 
-    std::chrono::time_point<std::chrono::system_clock> time::clock_gettime() {
-        return initial_time + convert_to_sim(std::chrono::system_clock::now() - initial_time);
+    std::chrono::time_point<std::chrono::system_clock> time_manager::clock_gettime() {
+        auto real_now = std::chrono::system_clock::now();
+        auto elapsed_real_time = real_now - initial_time;
+        auto sim_duration = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed_real_time * scale);
+        return std::chrono::time_point<std::chrono::system_clock>(sim_duration);
     }
 
-    void time::set_timeout(std::chrono::milliseconds sim_ms, std::function<void()> callback) {
+    void time_manager::set_timeout(std::chrono::milliseconds sim_ms, std::function<void()> callback) {
         std::unique_lock<std::mutex> lock(timeout_mutex);
         timeouts.push({clock_gettime() + sim_ms, callback});
     }
 
-    void time::process_timeouts() {
+    void time_manager::process_timeouts() {
         std::unique_lock<std::mutex> lock(timeout_mutex);
         auto current_time = clock_gettime();
         while (!timeouts.empty() && timeouts.top().time <= current_time) {
@@ -24,14 +28,6 @@ namespace redstone::time {
             timeouts.pop();
             timeout.callback();
         }
-    }
-
-    std::chrono::duration<double, std::milli> time::convert_to_real(std::chrono::milliseconds sim_ms) {
-        return std::chrono::duration<double, std::milli>(ms.count() * scale);
-    }
-
-    std::chrono::duration<double, std::milli> time::convert_to_sim(std::chrono::milliseconds real_ms) {
-        return std::chrono::duration<double, std::milli>(ms.count() / scale);
     }
 
 } // namespace redstone::time
