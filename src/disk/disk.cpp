@@ -1,11 +1,10 @@
 #include "redstone/disk/disk.hpp"
-#include <_types/_uint64_t.h>
 #include <cstddef>
+#include <cstdint>
 #include <fstream>
 #include <iostream>
 #include <mutex>
-#include <sys/_types/_int64_t.h>
-#include <sys/_types/_seek_set.h>
+#include <sys/types.h>
 #include <utility>
 #include <vector>
 
