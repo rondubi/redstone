@@ -17,6 +17,7 @@ constexpr int passthroughs[] = {
     10,  // mprotect
     11,  // munmap
     39,  // getpid
+    231, // exit_group
 };
 std::bitset<500> get_passthroughs() {
   std::bitset<500> all;
@@ -36,7 +37,8 @@ struct logging_handler : redstone::hook::handlers {
   maybe_handle(std::uint64_t sysno,
                std::span<const uint64_t, 6> args) override {
     if (should_passthrough(sysno)) {
-      fmt::println("passthrough: {}", sysno);
+      fmt::println("passthrough: {} ({})", sysno,
+                   redstone::hook::syscall_name(sysno));
       return std::nullopt;
     }
 
