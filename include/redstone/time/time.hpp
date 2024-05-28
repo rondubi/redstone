@@ -3,7 +3,6 @@
 #include <chrono>
 #include <queue>
 #include <functional>
-#include <thread>
 #include <mutex>
 
 namespace redstone::time {
