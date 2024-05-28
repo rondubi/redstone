@@ -10,7 +10,7 @@ namespace redstone::time {
     class time_manager {
     public:
         // Scale: simulation time / real time
-        time_manager(double scale);
+        explicit time_manager(double scale);
 
         // Sleep for a duration scaled to simulation time
         void sleep(std::chrono::milliseconds sim_ms);
