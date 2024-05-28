@@ -10,8 +10,8 @@
 
 namespace redstone::hook {
 struct handlers {
-  virtual std::optional<int> maybe_handle(int sysno,
-                                          std::span<const uint64_t, 6> args) {
+  virtual std::optional<std::uint64_t>
+  maybe_handle(std::uint64_t sysno, std::span<const uint64_t, 6> args) {
     return std::nullopt;
   }
 

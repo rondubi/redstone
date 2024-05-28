@@ -32,8 +32,9 @@ std::bitset<500> get_passthroughs() {
 struct logging_handler : redstone::hook::handlers {
   std::bitset<500> passthrough = get_passthroughs();
 
-  std::optional<int> maybe_handle(int sysno,
-                                  std::span<const uint64_t, 6> args) override {
+  std::optional<std::uint64_t>
+  maybe_handle(std::uint64_t sysno,
+               std::span<const uint64_t, 6> args) override {
     if (should_passthrough(sysno)) {
       fmt::println("passthrough: {}", sysno);
       return std::nullopt;
@@ -54,8 +55,8 @@ struct logging_handler : redstone::hook::handlers {
   void exited(int status) override { fmt::println("exited: {}", status); }
 
 private:
-  bool should_passthrough(int sysno) const {
-    if (sysno < 0 || passthrough.size() <= sysno) {
+  bool should_passthrough(std::uint64_t sysno) const {
+    if (passthrough.size() <= sysno) {
       return true;
     }
     return passthrough.test(sysno);
