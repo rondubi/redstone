@@ -149,14 +149,17 @@ void run_command(const command &cmd, handlers &handlers) {
       continue;
     }
 
+    // Overwrite syscall with SYS_gettid (noop, essentially)
     child.ptrace_get_regs(&regs);
     regs.orig_rax = SYS_gettid;
     regs.rax = SYS_gettid;
     child.ptrace_set_regs(regs);
 
+    // Wait for gettid to finish
     child.ptrace_syscall();
     child.wait(NULL);
 
+    // Update return value of 'gettid' to be the result we want
     regs.orig_rax = *result;
     regs.rax = *result;
     child.ptrace_set_regs(regs);
