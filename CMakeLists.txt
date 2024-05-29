@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.16)
 project(redstone VERSION 0.1.0)
 
 add_subdirectory("deps/fmt")
+
+set(SPDLOG_FMT_EXTERNAL ON)
 add_subdirectory("deps/spdlog2")
 add_subdirectory("deps/sqlite3")
 
