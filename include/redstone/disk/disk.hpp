@@ -1,13 +1,13 @@
 #pragma once
 
+#include <sys/types.h>
+#include <unistd.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <mutex>
 #include <span>
-#include <stdint.h>
-#include <sys/types.h>
-#include <unistd.h>
 #include <unordered_map>
 #include <vector>
 
@@ -25,7 +25,6 @@ private:
 };
 
 class open_file {
-
   struct write_req {
     std::vector<std::byte> bytes;
     uint64_t pos;
@@ -37,7 +36,7 @@ public:
   int64_t pread(std::span<std::byte> buf, size_t offset);
   int64_t pwrite(std::span<const std::byte> buf, size_t offset);
   int64_t lseek(size_t offset, int whence);
-  void flush_backlog();
+  int fsync();
 
 private:
   std::vector<write_req> write_backlog_;
@@ -45,6 +44,8 @@ private:
   std::shared_ptr<disk_file> disk_;
   uint64_t pos_;
   bool direct_;
+
+  int fsync_unlocked();
   int64_t pread_unlocked(std::span<std::byte> buf, size_t offset);
   int64_t pwrite_unlocked(std::span<const std::byte> buf, size_t offset);
 };
