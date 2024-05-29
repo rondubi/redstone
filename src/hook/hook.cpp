@@ -1,5 +1,6 @@
 #include "redstone/hook/hook.hpp"
 #include <csignal>
+#include <cstdint>
 #include <cstdlib>
 #include <stdexcept>
 #include <sys/ptrace.h>
@@ -105,12 +106,46 @@ child spawn(const command &cmd) {
   throw std::system_error{errno, std::generic_category(), "execvp failed"};
 }
 
+void replace_syscall_with_result(child &child, uint64_t result) {
+  user_regs_struct regs;
+
+  // Overwrite syscall with SYS_gettid (noop, essentially)
+  child.ptrace_get_regs(&regs);
+  regs.orig_rax = SYS_gettid;
+  regs.rax = SYS_gettid;
+  child.ptrace_set_regs(regs);
+
+  // Wait for gettid to finish
+  child.ptrace_syscall();
+  child.wait(NULL);
+
+  // Update return value of 'gettid' to be the result we want
+  regs.orig_rax = result;
+  regs.rax = result;
+  child.ptrace_set_regs(regs);
+}
+
+void handle_trapped(child &child, handlers &handlers) {
+  ptrace_syscall_info info;
+
+  child.ptrace_get_syscall_info(&info);
+
+  if (info.op != PTRACE_SYSCALL_INFO_ENTRY) {
+    return;
+  }
+
+  auto result = handlers.maybe_handle(info.entry.nr, info.entry.args);
+
+  if (!result.has_value()) {
+    return;
+  }
+
+  replace_syscall_with_result(child, result.value());
+}
 } // namespace
 
 void run_command(const command &cmd, handlers &handlers) {
   int status;
-  user_regs_struct regs;
-  ptrace_syscall_info info;
 
   auto child = spawn(cmd);
 
@@ -122,47 +157,24 @@ void run_command(const command &cmd, handlers &handlers) {
     child.wait(&status);
 
     if (WIFSIGNALED(status)) {
+      // Child terminated by signal
       handlers.signaled(WTERMSIG(status));
       return;
-    }
-    if (WIFEXITED(status)) {
+    } else if (WIFEXITED(status)) {
+      // Child exited normally
       handlers.exited(WEXITSTATUS(status));
       return;
     }
     if (WIFSTOPPED(status)) {
       int sig = WSTOPSIG(status);
 
-      if (sig != (0x80 | SIGTRAP)) {
+      // Trapped
+      if (sig == (0x80 | SIGTRAP)) {
+        handle_trapped(child, handlers);
+      } else {
         handlers.stopped(sig);
       }
     }
-
-    child.ptrace_get_syscall_info(&info);
-
-    if (info.op != PTRACE_SYSCALL_INFO_ENTRY) {
-      continue;
-    }
-
-    auto result = handlers.maybe_handle(info.entry.nr, info.entry.args);
-
-    if (!result.has_value()) {
-      continue;
-    }
-
-    // Overwrite syscall with SYS_gettid (noop, essentially)
-    child.ptrace_get_regs(&regs);
-    regs.orig_rax = SYS_gettid;
-    regs.rax = SYS_gettid;
-    child.ptrace_set_regs(regs);
-
-    // Wait for gettid to finish
-    child.ptrace_syscall();
-    child.wait(NULL);
-
-    // Update return value of 'gettid' to be the result we want
-    regs.orig_rax = *result;
-    regs.rax = *result;
-    child.ptrace_set_regs(regs);
   }
 }
 } // namespace redstone::hook
