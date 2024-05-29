@@ -5,13 +5,13 @@
 #include <sys/types.h>
 #include <sys/user.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #include <csignal>
 #include <cstdint>
 #include <cstdlib>
 #include <stdexcept>
 #include <system_error>
-#include <unistd.h>
 #include <vector>
 
 namespace redstone::hook {
