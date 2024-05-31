@@ -1,182 +1,150 @@
 #include "redstone/hook/hook.hpp"
 
+#include <mutex>
+#include <set>
+#include <string_view>
+#include <sys/auxv.h>
+#include <sys/prctl.h>
 #include <sys/ptrace.h>
+#include <sys/reg.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/user.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <csignal>
+#include <algorithm>
 #include <cstdint>
-#include <cstdlib>
-#include <stdexcept>
-#include <system_error>
+#include <iterator>
+#include <span>
+#include <utility>
 #include <vector>
+
+#include <fmt/format.h>
+#include <fmt/ranges.h>
+#include <spdlog/spdlog.h>
+
+#include "redstone/hook/syscalls.hpp"
 
 namespace redstone::hook {
 namespace {
-struct ptrace_syscall_info {
-  uint8_t op;                   /* Type of system call stop */
-  uint32_t arch;                /* AUDIT_ARCH_* value; see seccomp(2) */
-  uint64_t instruction_pointer; /* CPU instruction pointer */
-  uint64_t stack_pointer;       /* CPU stack pointer */
-  union {
-    struct {            /* op == PTRACE_SYSCALL_INFO_ENTRY */
-      uint64_t nr;      /* System call number */
-      uint64_t args[6]; /* System call arguments */
-    } entry;
-    struct {            /* op == PTRACE_SYSCALL_INFO_EXIT */
-      int64_t rval;     /* System call return value */
-      uint8_t is_error; /* System call error flag;
-                        Boolean: does rval contain
-                        an error value (-ERRCODE) or
-                        a nonerror return value? */
-    } exit;
-    struct {             /* op == PTRACE_SYSCALL_INFO_SECCOMP */
-      uint64_t nr;       /* System call number */
-      uint64_t args[6];  /* System call arguments */
-      uint32_t ret_data; /* SECCOMP_RET_DATA portion
-                         of SECCOMP_RET_TRACE
-                         return value */
-    } seccomp;
-  };
+hook_result explicit_passthrough(simulator &, instance &,
+                                 std::span<const uint64_t, 6>) {
+  return {.kind = hook_result_kind::passthrough};
+}
+
+static constexpr uint64_t passthroughs[] = {
+    SYS_exit,
+    SYS_exit_group,
+    SYS_mmap,
+    SYS_mprotect,
+    SYS_munmap,
+    SYS_rt_sigaction,
+    SYS_set_tid_address,
+    SYS_set_robust_list,
+    SYS_rt_sigprocmask,
+    SYS_prlimit64,
+    SYS_brk,
+    SYS_arch_prctl,
 };
 
-struct child {
-  pid_t pid;
+// Helper map to build the proper hook table
+// static constexpr std::pair<uint64_t, hook> hook_map[] = {
+//     {SYS_exit_group, explicit_passthrough},
+//     {SYS_mmap, explicit_passthrough},
+// };
 
-  void wait(int *status, int options = 0) {
-    if (0 > waitpid(pid, status, options))
-      throw std::system_error{errno, std::generic_category(), "waitpid failed"};
+static std::vector<hook> build_hook_table() {
+  std::vector<std::pair<uint64_t, hook>> map;
+
+  // {std::begin(hook_map),std::end(hook_map)};
+
+  for (auto passthrough : passthroughs) {
+    std::pair<uint64_t, hook> pair{passthrough, explicit_passthrough};
+
+    fmt::println("passthrough {}", syscall_name(passthrough));
+    map.push_back(pair);
   }
 
-  template <typename T, typename U>
-  void ptrace(enum __ptrace_request req, T addr, U data) {
-    if (0 > ::ptrace(req, pid, addr, data))
-      throw std::system_error{errno, std::generic_category(), "ptrace failed"};
+  auto max_sysno =
+      std::max(map.begin(), map.end(), [](const auto &lhs, const auto &rhs) {
+        return lhs->first < rhs->first;
+      })->first;
+
+  std::vector<hook> table;
+  table.resize(max_sysno + 1, nullptr);
+
+  for (auto &[sys, hook] : map) {
+    fmt::println("hook {} = {}", syscall_name(sys), (void *)hook);
+
+    if (table.size() <= sys) {
+      table.resize(sys + 1);
+    }
+    table.at(sys) = hook;
   }
 
-  void ptrace_syscall() { ptrace(PTRACE_SYSCALL, 0, 0); }
-
-  void ptrace_get_regs(user_regs_struct *regs) {
-    ptrace(PTRACE_GETREGS, 0, regs);
-  }
-
-  void ptrace_set_regs(const user_regs_struct &regs) {
-    ptrace(PTRACE_SETREGS, 0, &regs);
-  }
-
-  void ptrace_set_options(int options) {
-    ptrace(PTRACE_SETOPTIONS, 0, options);
-  }
-
-  void ptrace_get_syscall_info(ptrace_syscall_info *info) {
-    ptrace(PTRACE_GET_SYSCALL_INFO, sizeof(*info), info);
-  }
-};
-
-child spawn(const command &cmd) {
-  if (cmd.args.at(0) != cmd.path) {
-    throw std::invalid_argument{
-        "spawn: argv[0] must be the same as the provided path"};
-  }
-
-  std::vector<char *> argv;
-
-  for (auto &arg : cmd.args) {
-    argv.push_back(const_cast<char *>(arg.c_str()));
-  }
-  argv.push_back(nullptr);
-
-  pid_t pid = fork();
-  child c{pid};
-
-  if (pid < 0) {
-    throw std::system_error{errno, std::generic_category(),
-                            "failed to fork process"};
-  }
-
-  if (0 < pid) {
-    return c;
-  }
-
-  c.ptrace(PTRACE_TRACEME, 0, 0);
-  std::raise(SIGSTOP);
-
-  execvp(cmd.path.c_str(), argv.data());
-  throw std::system_error{errno, std::generic_category(), "execvp failed"};
+  return table;
 }
 
-void replace_syscall_with_result(child &child, uint64_t result) {
-  user_regs_struct regs;
-
-  // Overwrite syscall with SYS_gettid (noop, essentially)
-  child.ptrace_get_regs(&regs);
-  regs.orig_rax = SYS_gettid;
-  regs.rax = SYS_gettid;
-  child.ptrace_set_regs(regs);
-
-  // Wait for gettid to finish
-  child.ptrace_syscall();
-  child.wait(NULL);
-
-  // Update return value of 'gettid' to be the result we want
-  regs.orig_rax = result;
-  regs.rax = result;
-  child.ptrace_set_regs(regs);
-}
-
-void handle_trapped(child &child, handlers &handlers) {
-  ptrace_syscall_info info;
-
-  child.ptrace_get_syscall_info(&info);
-
-  if (info.op != PTRACE_SYSCALL_INFO_ENTRY) {
-    return;
-  }
-
-  auto result = handlers.maybe_handle(info.entry.nr, info.entry.args);
-
-  if (!result.has_value()) {
-    return;
-  }
-
-  replace_syscall_with_result(child, result.value());
-}
 } // namespace
 
-void run_command(const command &cmd, handlers &handlers) {
-  int status;
+std::span<const hook> hook_table() {
+  static const std::vector<hook> table = build_hook_table();
+  return table;
+}
 
-  auto child = spawn(cmd);
+namespace {
+std::mutex mutex;
+std::set<std::string_view> unimplemented;
+std::set<std::string_view> all;
+std::set<std::string_view> passthrough;
+std::set<std::string_view> implemented;
+} // namespace
 
-  child.wait(nullptr);
-  child.ptrace_set_options(PTRACE_O_TRACESYSGOOD);
+hook get_hook(uint64_t sys) {
+  std::unique_lock lock{mutex};
 
-  for (;;) {
-    child.ptrace_syscall();
-    child.wait(&status);
+  auto name = syscall_name(sys);
+  all.insert(name);
 
-    if (WIFSIGNALED(status)) {
-      // Child terminated by signal
-      handlers.signaled(WTERMSIG(status));
-      return;
-    } else if (WIFEXITED(status)) {
-      // Child exited normally
-      handlers.exited(WEXITSTATUS(status));
-      return;
-    }
-    if (WIFSTOPPED(status)) {
-      int sig = WSTOPSIG(status);
+  auto table = hook_table();
 
-      // Trapped
-      if (sig == (0x80 | SIGTRAP)) {
-        handle_trapped(child, handlers);
-      } else {
-        handlers.stopped(sig);
-      }
-    }
+  hook h = nullptr;
+
+  if (sys < table.size()) {
+    h = table[sys];
+  }
+
+  if (h == explicit_passthrough) {
+    spdlog::trace("passthrough: {}", name);
+    passthrough.insert(name);
+  } else if (h == nullptr) {
+    spdlog::warn("unimplemented: {}", name);
+    unimplemented.insert(name);
+  } else {
+    spdlog::trace("implemented: {}", name);
+    implemented.insert(name);
+  }
+  return h;
+}
+
+void print_stats() {
+  std::unique_lock lock{mutex};
+
+  fmt::println("passthrough:");
+  for (auto sys : passthrough) {
+    fmt::println("\t{}", sys);
+  }
+
+  fmt::println("implemented:");
+  for (auto sys : implemented) {
+    fmt::println("\t{}", sys);
+  }
+
+  fmt::println("unimplemented:");
+  for (auto sys : unimplemented) {
+    fmt::println("\t{}", sys);
   }
 }
+
 } // namespace redstone::hook

@@ -1,11 +1,17 @@
-#include "redstone/hook/hook.hpp"
-#include "redstone/hook/syscalls.hpp"
+
+
+#include <sys/syscall.h>
 
 #include <bitset>
 #include <cstdio>
-#include <fmt/format.h>
 
-#include <sys/syscall.h>
+#include <fmt/format.h>
+#include <spdlog/spdlog.h>
+
+#include "redstone/hook/hook.hpp"
+#include "redstone/hook/syscalls.hpp"
+#include "redstone/random/splitmix.hpp"
+#include "redstone/redstone.hpp"
 
 namespace {
 constexpr int passthroughs[] = {
@@ -50,7 +56,7 @@ struct logging_handler : redstone::hook::handlers {
     }
 
     auto name = redstone::hook::syscall_name(sysno);
-    fmt::println("unhandled: {} ({})", sysno, name);
+    spdlog::warn("unhandled: {} ({})", sysno, name);
     return std::nullopt;
   }
 
@@ -65,14 +71,46 @@ private:
   }
 };
 
+namespace {
+void add_single_instance_from_args(redstone::simulator &sim, int argc,
+                                   char **argv) {
+  auto &instance = sim.push_instance(argv[1]);
+
+  for (int i = 2; i < argc; ++i) {
+    instance.args.push_back(argv[i]);
+  }
+}
+} // namespace
+
 int main(int argc, char **argv) {
-  redstone::hook::command cmd;
+  spdlog::set_level(spdlog::level::trace);
+
+  spdlog::info("Hello, world!");
+
+  uint64_t seed = 0xfeedbeef;
+  redstone::random::split_mix split{seed};
+
+  redstone::simulator simulator{0xfeedbeef};
+
+  for (int i = 0; i < 5; ++i) {
+    add_single_instance_from_args(simulator, argc, argv);
+  }
+
+  redstone::sim::runner_options options;
 
   for (int i = 1; i < argc; ++i) {
-    cmd.args.push_back(argv[i]);
+    options.args.push_back(argv[i]);
   }
-  cmd.path = cmd.args.at(0);
+  options.path = options.args.at(0);
 
-  logging_handler handler;
-  redstone::hook::run_command(cmd, handler);
+  {
+    auto handle = redstone::sim::ptrace_run(options);
+    handle->wait();
+  }
+
+  spdlog::info("done");
+
+  redstone::hook::print_stats();
+
+  return 0;
 }

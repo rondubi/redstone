@@ -12,6 +12,11 @@ add_executable(redstone
     "src/disk/disk.cpp"
     "src/hook/hook.cpp"
     "src/hook/syscalls.cpp"
+    "src/sys/child.cpp"
+    "src/sys/ptrace.cpp"
+    "src/redstone.cpp"
+    "src/replica.cpp"
+    "src/sim/runner/ptrace.cpp"
 )
 
 target_compile_features(redstone PRIVATE cxx_std_20)
