@@ -8,6 +8,7 @@ struct TimeManagerTest : testing::Test, testing::WithParamInterface<double> {
 };
 
 TEST_P(TimeManagerTest, SleepTest) {
+    // Test that sleep() sleeps for the scaled time
     redstone::time::time_manager tm(scale); // Set scale to 1.0
     std::chrono::milliseconds sim_ms(1000); // Simulate 1000 milliseconds
 
@@ -26,6 +27,7 @@ TEST_P(TimeManagerTest, SleepTest) {
 }
 
 TEST_P(TimeManagerTest, GetTimeTest) {
+    // Test that clock_gettime() returns the scaled time
     redstone::time::time_manager tm(scale);
     auto start = std::chrono::system_clock::now();
     auto sim_start = tm.clock_gettime();
@@ -40,6 +42,7 @@ TEST_P(TimeManagerTest, GetTimeTest) {
 }
 
 TEST_P(TimeManagerTest, SingleTimeout) {
+    // Test that a single timeout is called after the correct amount of time
     redstone::time::time_manager tm(scale);
     bool callback_called = false;
     std::chrono::milliseconds sim_ms(1000);
@@ -55,6 +58,7 @@ TEST_P(TimeManagerTest, SingleTimeout) {
 }
 
 TEST_P(TimeManagerTest, MultipleTimeouts) {
+    // Test that multiple timeouts are called in the correct order
     redstone::time::time_manager tm(scale);
     bool callback1_called = false;
     bool callback2_called = false;
@@ -82,13 +86,14 @@ TEST_P(TimeManagerTest, MultipleTimeouts) {
 }
 
 TEST_P(TimeManagerTest, NoTimeouts) {
+    // Test processing timeouts with no timeouts set
     redstone::time::time_manager tm(scale);
-    // Process timeouts when none are set
     tm.process_timeouts();
     // No expectations, just ensuring no crashes or unexpected behavior
 }
 
 TEST_P(TimeManagerTest, OutOfOrderTimeouts) {
+    // Test that timeouts are called in the correct order even if they are set out of order
     redstone::time::time_manager tm(scale);
     bool callback1_called = false;
     bool callback2_called = false;
