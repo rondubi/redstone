@@ -12,6 +12,7 @@ add_executable(redstone
     "src/disk/disk.cpp"
     "src/hook/hook.cpp"
     "src/hook/syscalls.cpp"
+    "src/net/udp.cpp"
     "src/sys/child.cpp"
     "src/sys/ptrace.cpp"
     "src/redstone.cpp"
