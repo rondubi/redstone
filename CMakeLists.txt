@@ -17,6 +17,7 @@ add_executable(redstone
     "src/sys/ptrace.cpp"
     "src/redstone.cpp"
     "src/replica.cpp"
+    "src/sim/file_descriptor.cpp"
     "src/sim/runner/ptrace.cpp"
 )
 
