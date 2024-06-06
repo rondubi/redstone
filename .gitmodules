@@ -4,3 +4,6 @@
 [submodule "deps/spdlog2"]
 	path = deps/spdlog2
 	url = https://github.com/gabime/spdlog.git
+[submodule "deps/function_ref"]
+	path = deps/function_ref
+	url = https://github.com/TartanLlama/function_ref.git
