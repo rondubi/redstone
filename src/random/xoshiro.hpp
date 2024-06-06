@@ -11,13 +11,32 @@
 namespace redstone::random {
 class xoshiro256_star_star {
 public:
+  using result_type = uint64_t;
+
   static constexpr size_t seed_size = 32;
 
-  xoshiro256_star_star() = default;
+  xoshiro256_star_star() : state_{} {}
+
+  template <typename SeedSeq>
+  explicit xoshiro256_star_star(SeedSeq &seq) {
+    seed(seq);
+  }
 
   explicit xoshiro256_star_star(std::span<const std::byte, seed_size> seed) {
     std::memcpy(state_, seed.data(), seed.size_bytes());
   }
+
+  uint64_t operator()() { return next(); }
+
+  template <typename SeedSeq>
+  void seed(SeedSeq &seq) {
+    uint32_t seed[8];
+    seq.generate(seed, seed + 8);
+    std::memcpy(state_, seed, sizeof(seed));
+  }
+
+  static constexpr uint64_t min() { return 0; }
+  static constexpr uint64_t max() { return UINT64_MAX; }
 
   uint64_t next() {
     const uint64_t result = std::rotl(state_[1] * 5, 7) * 9;
@@ -66,6 +85,6 @@ public:
   }
 
 private:
-  uint64_t state_[4]{};
+  uint64_t state_[4];
 };
 } // namespace redstone::random
