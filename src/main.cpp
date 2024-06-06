@@ -12,6 +12,8 @@
 #include "hook/syscalls.hpp"
 #include "random/splitmix.hpp"
 #include "redstone.hpp"
+#include "sim/machine.hpp"
+#include "sim/simulator.hpp"
 
 namespace {
 constexpr int passthroughs[] = {
@@ -85,16 +87,14 @@ void add_single_instance_from_args(redstone::simulator &sim, int argc,
 int main(int argc, char **argv) {
   spdlog::set_level(spdlog::level::trace);
 
+  if (argc < 2) {
+    spdlog::error("no simulated process given");
+    return 0;
+  }
   spdlog::info("Hello, world!");
 
   uint64_t seed = 0xfeedbeef;
   redstone::random::split_mix split{seed};
-
-  redstone::simulator simulator{0xfeedbeef};
-
-  for (int i = 0; i < 5; ++i) {
-    add_single_instance_from_args(simulator, argc, argv);
-  }
 
   redstone::sim::runner_options options;
 
@@ -103,10 +103,15 @@ int main(int argc, char **argv) {
   }
   options.path = options.args.at(0);
 
-  {
-    auto handle = redstone::sim::ptrace_run(options);
-    handle->wait();
-  }
+  redstone::sim::machine mach{std::move(options)};
+
+  mach.start();
+  mach.current_replica()->runner().wait();
+
+  // {
+  //   auto handle = redstone::sim::ptrace_run(options);
+  //   handle->wait();
+  // }
 
   spdlog::info("done");
 

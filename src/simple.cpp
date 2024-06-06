@@ -1,8 +1,11 @@
+#include <cstdio>
 #include <ctime>
 #include <sqlite3.h>
 #include <stdexcept>
 
 int main() {
+  printf("hi!\n");
+
   struct timespec tm;
   clock_gettime(CLOCK_BOOTTIME, &tm);
 
