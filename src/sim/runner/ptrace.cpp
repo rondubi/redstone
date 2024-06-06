@@ -26,7 +26,11 @@
 #include <spdlog/spdlog.h>
 
 #include "hook/hook.hpp"
+#include "hook/syscalls.hpp"
+#include "sim/machine.hpp"
+#include "sim/replica.hpp"
 #include "sys/child.hpp"
+#include "sys/file.hpp"
 #include "sys/ptrace.hpp"
 
 namespace redstone::sim {
@@ -89,7 +93,7 @@ void replace_syscall_with_result(sys::child &child, uint64_t result) {
   sys::ptrace::set_regs(child, regs);
 }
 
-void handle_trapped(sys::child &child, simulator &sim, instance &instance) {
+void handle_trapped(sys::child &child, replica &replica) {
   sys::ptrace::syscall_info info;
 
   sys::ptrace::get_syscall_info(child, &info);
@@ -104,13 +108,21 @@ void handle_trapped(sys::child &child, simulator &sim, instance &instance) {
     return;
   }
 
-  auto result = hook(sim, instance, info.entry.args);
+  spdlog::trace("lol2");
+
+  auto result = hook(replica, info.entry.args);
+
+  spdlog::trace("lol12");
 
   switch (result.kind) {
   case redstone::hook::hook_result_kind::handled:
+    spdlog::trace("lol3");
+    spdlog::trace("simulated syscall {}, result {}",
+                  hook::syscall_name(info.entry.nr), result.handled);
     replace_syscall_with_result(child, result.handled);
     return;
   case redstone::hook::hook_result_kind::passthrough:
+    spdlog::trace("lol4");
     return;
   }
 }
@@ -195,11 +207,26 @@ struct ptrace_runner_handle : public runner_handle {
     return saved_state;
   }
 
+  int write_memory(uintptr_t ptr, std::span<const std::byte> data) final {
+    auto res = memfd.write_all_at(ptr, data);
+    if (res < 0)
+      return res;
+    return 0;
+  }
+
+  int read_memory(uintptr_t ptr, std::span<std::byte> data) final {
+    auto res = memfd.read_exact_at(ptr, data);
+    if (res < 0)
+      return res;
+    return 0;
+  }
+
   std::mutex mutex;
   std::condition_variable cond;
   std::thread worker;
   std::optional<sys::child::run_state> saved_state;
   sys::child child;
+  sys::file memfd;
 };
 
 template <class... Ts>
@@ -220,7 +247,12 @@ void ptrace_worker(std::shared_ptr<ptrace_runner_handle> handle,
   child = spawn(options);
 
   simulator *sim = options.simulator;
-  instance *instance = options.instance;
+  assert(sim);
+
+  machine *machine = options.machine;
+  assert(machine);
+
+  auto replica = machine->current_replica();
 
   // child.wait();
   sys::ptrace::set_options(child, PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACEEXEC);
@@ -246,10 +278,11 @@ void ptrace_worker(std::shared_ptr<ptrace_runner_handle> handle,
     auto should_return =
         std::visit(overloaded{
                        [](sys::child::running v) { return false; },
-                       [&child, sim, instance](sys::child::stopped v) {
+                       [&replica, &child](sys::child::stopped v) {
                          if (v.signal == (0x80 | SIGTRAP)) {
-                           handle_trapped(child, *sim, *instance);
+                           handle_trapped(child, *replica);
                          }
+                         spdlog::trace("lol1");
                          return false;
                        },
                        [](sys::child::terminated v) { return true; },
