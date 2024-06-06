@@ -1,10 +1,10 @@
-#include "redstone/redstone.hpp"
+#include "redstone.hpp"
 
 #include <spdlog/spdlog.h>
 #include <vector>
 
-#include "redstone/hook/hook.hpp"
-#include "redstone/random/splitmix.hpp"
+#include "hook/hook.hpp"
+#include "random/splitmix.hpp"
 
 namespace redstone {
 simulator::simulator(uint64_t seed) {

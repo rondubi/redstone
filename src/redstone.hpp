@@ -8,11 +8,9 @@
 #include <thread>
 #include <vector>
 
-#include "redstone/net/network.hpp"
-#include "redstone/net/socket.hpp"
-#include "redstone/random/xoshiro.hpp"
-#include "redstone/sim/runner.hpp"
-#include "redstone/sys/child.hpp"
+#include "random/xoshiro.hpp"
+#include "sim/runner.hpp"
+#include "sys/child.hpp"
 
 namespace redstone {
 struct child {

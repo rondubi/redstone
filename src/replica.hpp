@@ -2,9 +2,9 @@
 
 #include <memory>
 
-#include "redstone/disk/disk.hpp"
-#include "redstone/sys/child.hpp"
-#include "redstone/sys/command.hpp"
+#include "disk/disk.hpp"
+#include "sys/child.hpp"
+#include "sys/command.hpp"
 
 namespace redstone::replica {
 struct child;

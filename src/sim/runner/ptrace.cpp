@@ -1,4 +1,4 @@
-#include "redstone/sim/runner.hpp"
+#include "sim/runner.hpp"
 
 #include <sys/auxv.h>
 #include <sys/prctl.h>
@@ -25,9 +25,9 @@
 
 #include <spdlog/spdlog.h>
 
-#include "redstone/hook/hook.hpp"
-#include "redstone/sys/child.hpp"
-#include "redstone/sys/ptrace.hpp"
+#include "hook/hook.hpp"
+#include "sys/child.hpp"
+#include "sys/ptrace.hpp"
 
 namespace redstone::sim {
 namespace {

@@ -1,4 +1,4 @@
-#include "redstone/disk/disk.hpp"
+#include "disk/disk.hpp"
 
 #include <sys/types.h>
 

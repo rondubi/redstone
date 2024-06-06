@@ -2,7 +2,7 @@
 
 #include <chrono>
 
-#include "redstone/random/rng.hpp"
+#include "random/rng.hpp"
 
 namespace redstone::net {
 struct net_fault_options {

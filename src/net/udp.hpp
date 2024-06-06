@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "fault.hpp"
-#include "redstone/random/xoshiro.hpp"
+#include "random/xoshiro.hpp"
 
 namespace redstone::net {
 // A one-way UDP stream

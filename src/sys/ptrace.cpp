@@ -1,10 +1,8 @@
-#include "redstone/sys/ptrace.hpp"
-
 #include <sys/ptrace.h>
-
 #include <system_error>
 
-#include "redstone/sys/child.hpp"
+#include "child.hpp"
+#include "ptrace.hpp"
 
 namespace redstone::sys::ptrace {
 namespace {

@@ -1,4 +1,4 @@
-#include "redstone/hook/hook.hpp"
+#include "hook/hook.hpp"
 
 #include <mutex>
 #include <set>
@@ -24,7 +24,7 @@
 #include <fmt/ranges.h>
 #include <spdlog/spdlog.h>
 
-#include "redstone/hook/syscalls.hpp"
+#include "hook/syscalls.hpp"
 
 namespace redstone::hook {
 namespace {

@@ -1,4 +1,4 @@
-#include "redstone/replica.hpp"
+#include "replica.hpp"
 
 #include <sys/syscall.h>
 
@@ -11,7 +11,7 @@
 #include <variant>
 #include <vector>
 
-#include "redstone/hook/hook.hpp"
+#include "hook/hook.hpp"
 
 namespace redstone::replica {
 using file_descriptor = std::variant<disk::open_file>;

@@ -1,4 +1,4 @@
-#include "redstone/hook/syscalls.hpp"
+#include "hook/syscalls.hpp"
 
 namespace redstone::hook {
 std::string_view syscall_name(int num) {

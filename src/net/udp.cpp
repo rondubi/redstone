@@ -1,4 +1,4 @@
-#include "redstone/net/udp.hpp"
+#include "net/udp.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -30,6 +30,7 @@ std::int64_t udp_stream::write(std::span<const std::byte> data) {
 
   std::vector<udp_packet> replays;
   const auto replay_count = fault_options_.replay_count(rng_);
+  replays.reserve(replay_count);
 
   while (replays.size() < replay_count) {
     replays.push_back(p);
@@ -44,7 +45,6 @@ std::int64_t udp_stream::write(std::span<const std::byte> data) {
   }
 
   cond_.notify_one();
-
   lock.unlock();
 
   for (auto &listener : select_write_)

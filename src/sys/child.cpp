@@ -1,4 +1,4 @@
-#include "redstone/sys/child.hpp"
+#include "child.hpp"
 
 #include <cstdio>
 #include <sys/wait.h>

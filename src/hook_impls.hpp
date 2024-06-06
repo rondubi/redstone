@@ -4,7 +4,7 @@
 #include <span>
 #include <vector>
 
-#include "redstone/redstone.hpp"
+#include "redstone.hpp"
 
 namespace redstone {
 enum class hook_kind {

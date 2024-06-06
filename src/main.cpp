@@ -8,10 +8,10 @@
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
 
-#include "redstone/hook/hook.hpp"
-#include "redstone/hook/syscalls.hpp"
-#include "redstone/random/splitmix.hpp"
-#include "redstone/redstone.hpp"
+#include "hook/hook.hpp"
+#include "hook/syscalls.hpp"
+#include "random/splitmix.hpp"
+#include "redstone.hpp"
 
 namespace {
 constexpr int passthroughs[] = {

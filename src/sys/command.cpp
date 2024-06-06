@@ -1,4 +1,4 @@
-#include "redstone/sys/command.hpp"
+#include "command.hpp"
 
 namespace redstone::sys {
 child command::spawn() {}

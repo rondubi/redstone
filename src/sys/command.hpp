@@ -1,6 +1,6 @@
 #pragma once
 
-#include "redstone/sys/child.hpp"
+#include "sys/child.hpp"
 
 #include <string>
 #include <utility>

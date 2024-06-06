@@ -6,7 +6,7 @@
 #include <variant>
 #include <vector>
 
-#include "redstone/sys/child.hpp"
+#include "sys/child.hpp"
 
 namespace redstone {
 class simulator;

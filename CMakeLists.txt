@@ -22,7 +22,7 @@ add_executable(redstone
 )
 
 target_compile_features(redstone PRIVATE cxx_std_20)
-target_include_directories(redstone PRIVATE "include")
+target_include_directories(redstone PRIVATE "src")
 
 target_link_libraries(redstone
     PRIVATE
