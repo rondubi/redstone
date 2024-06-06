@@ -25,12 +25,12 @@
 #include <spdlog/spdlog.h>
 
 #include "hook/syscalls.hpp"
+#include "impls.hpp"
 
 namespace redstone::hook {
 namespace {
-hook_result explicit_passthrough(simulator &, instance &,
-                                 std::span<const uint64_t, 6>) {
-  return {.kind = hook_result_kind::passthrough};
+hook_result explicit_passthrough(sim::replica &, std::span<const uint64_t, 6>) {
+  return passthrough;
 }
 
 static constexpr uint64_t passthroughs[] = {
@@ -55,9 +55,11 @@ static constexpr uint64_t passthroughs[] = {
 // };
 
 static std::vector<hook> build_hook_table() {
-  std::vector<std::pair<uint64_t, hook>> map;
-
-  // {std::begin(hook_map),std::end(hook_map)};
+  std::vector<std::pair<uint64_t, hook>> map{
+      {SYS_write, sys_write},
+      {SYS_read, sys_read},
+      {SYS_close, sys_close},
+  };
 
   for (auto passthrough : passthroughs) {
     std::pair<uint64_t, hook> pair{passthrough, explicit_passthrough};
@@ -75,8 +77,6 @@ static std::vector<hook> build_hook_table() {
   table.resize(max_sysno + 1, nullptr);
 
   for (auto &[sys, hook] : map) {
-    fmt::println("hook {} = {}", syscall_name(sys), (void *)hook);
-
     if (table.size() <= sys) {
       table.resize(sys + 1);
     }
@@ -97,7 +97,7 @@ namespace {
 std::mutex mutex;
 std::set<std::string_view> unimplemented;
 std::set<std::string_view> all;
-std::set<std::string_view> passthrough;
+std::set<std::string_view> passthrough_set;
 std::set<std::string_view> implemented;
 } // namespace
 
@@ -117,7 +117,7 @@ hook get_hook(uint64_t sys) {
 
   if (h == explicit_passthrough) {
     spdlog::trace("passthrough: {}", name);
-    passthrough.insert(name);
+    passthrough_set.insert(name);
   } else if (h == nullptr) {
     spdlog::warn("unimplemented: {}", name);
     unimplemented.insert(name);
@@ -132,7 +132,7 @@ void print_stats() {
   std::unique_lock lock{mutex};
 
   fmt::println("passthrough:");
-  for (auto sys : passthrough) {
+  for (auto sys : passthrough_set) {
     fmt::println("\t{}", sys);
   }
 
