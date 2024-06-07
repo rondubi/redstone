@@ -218,6 +218,68 @@ but one that can be generally implemented on normal systems and run a much broad
 
 }
 
+\section{System Call Interception}
+
+{\fontsize{12}{15}\selectfont 
+In order for Redstone to perform its role of replacing the implementation of system calls,
+we need some method of intercepting calls made to the system library and,
+conditional on whether we seek to alter their behavior,
+replacing them.
+
+Initially, we planned to use \texttt{LD\_PRELOAD},
+a feature of the dynamic linker,
+which allows a user-created shared library to override weakly linked \texttt{libc} symbols on process start.
+Unfortunately,
+\texttt{LD\_PRELOAD} is often finicky and can be unreliable,
+as we saw in our own attempts to use it,
+causing us to opt not to employ it and to instead seek alternatives.
+One option was to simply link in a static library containing all the overridden functions.
+This would have meant that the targeted program would need to be compilable specifically for use with Redstone.
+This was decided to be a barrier to the goal of easy simulation without code changes to the program to be tested,
+so we opted for the second fallback: the \texttt{ptrace(2)} system call.
+
+\texttt{ptrace(2)} is used by debuggers to fully control a child process,
+which gives the user a lot of power over the simulated processes.
+Unfortunately,
+with great power came a significant amount of overhead.
+Using the \texttt{PTRACE\_SYSCALL} request,
+Redstone runs the program until a syscall instruction is issued,
+at which point it accepts the arguments,
+the syscall number, and some other state.
+We pass this information, as well as the syscall identifier,
+to a platform-agnostic hooks table that, if possible,  calls the relevant hook.
+If no hook is present for the given syscall,
+Redstone passes the syscall through to the kernel and continue the program's execution.
+If a hook is present for the given syscall,
+and returns that it has successfully handled the given request,
+Redstone first replaces the syscall number with that of \texttt{getpid}
+(a cheap syscall that doesn’t take any arguments and has no side effects),
+then changes the program registers to replace the syscall return value with our result.
+For obvious reasons, this is quite slow.
+The \texttt{PTRACE\_SYSEMU} command
+(which just doesn’t execute the system call, allowing us to set the return value instead)
+can reduce this overhead,
+but not by any meaningful amount.
+We have more data on the specific overheads imposed by the \texttt{ptrace} runner in the evaluation section.
+
+Aside from the overheads imposed by \texttt{ptrace},
+there is an additional limitation:
+Linux implements some system calls in userspace dynamic libraries for improved performance.
+The modern version of this is known as \texttt{vDSO},
+and unfortunately is not caught by \texttt{PTRACE\_SYSCALL}.
+To counter this, we forcefully disable the use of \texttt{vDSO} on simulated programs upon start,
+falling back to traditional system calls.
+This further worsens the overheads of \texttt{ptrace}.
+
+Owing to the platform-specific nature of interception,
+this part of Redstone is confined to black magic jail,
+and can be easily overridden to boost platform support or improve performance.
+For example,
+if ever \texttt{LD\_PRELOAD} decided to stop being so temperamental,
+effectively only one line of code would need to be changed in order to replace the simulator’s runner with a different implementation.
+
+}
+
 % Distributed systems are fucking stupid.
 % 
 % Therefore, in order to combat this stupidity, there was the advent of a concept of "testing".
