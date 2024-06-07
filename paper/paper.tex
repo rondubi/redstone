@@ -49,7 +49,8 @@
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\documentclass[letterpaper,twocolumn,10pt]{article}
+\documentclass[letterpaper,twocolumn]{article}
+
 \usepackage{style}
 
 % to be able to draw some self-contained figs
@@ -58,6 +59,9 @@
 
 % inlined bib file
 \usepackage{filecontents}
+
+\usepackage{setspace}
+\linespread{1.25}
 
 %-------------------------------------------------------------------------------
 \begin{filecontents}{\jobname.bib}
@@ -112,6 +116,7 @@ note =         {\url{https://www.usenix.org/legacy/event/osdi02/tech/waldspurger
 %-------------------------------------------------------------------------------
 \begin{abstract}
 %-------------------------------------------------------------------------------
+{\fontsize{12}{15}\selectfont 
 In testing distributed systems,
 confirming a system's tolerance of faults in disks and networks is not only useful but necessary.
 Redstone, a modular deterministic simulation testing framework,
@@ -126,6 +131,7 @@ Our control over clock functions further allows us to "accelerate" time,
 increasing ability to test faster, and to emulate the effects of clock jitter.
 Finally, because Redstone is inherently modular,
 it is simple to extend and port to a wider variety of applications and platforms.
+}
 \end{abstract}
 
 
@@ -133,12 +139,92 @@ it is simple to extend and port to a wider variety of applications and platforms
 \section{Introduction}
 %-------------------------------------------------------------------------------
 
-A paragraph of text goes here. Lots of text. Plenty of interesting
-text. Text text text text text text text text text text text text text
-text text text text text text text text text text text text text text
-text text text text text text text text text text text text text text
-text text text text text text text.
-More fascinating text. Features galore, plethora of promises.
+{\fontsize{12}{15}\selectfont 
+Distributed systems are complicated ones,
+because they rely not only on the particular machines
+on which the systems run but also on the network connecting these machines.
+As such, distributed systems must contain many
+(often complicated and difficult-to-reason-about)
+mechanisms by which to recover from both network and machine failures
+(more specifically, network latency, disk I/O failure, bugs in the kernel,
+and all manners of timing-based bugs).
+
+Testing offers the ability to confirm that a system can withstand failures.
+Specifically, if one can introduce a failure and check that the system withstands it,
+it certainly increases the degree of trust in the system.
+However, in order to be effective,
+such testing must be able to consistently introduce failures.
+Just hoping that failures naturally occur in the process of testing is a non-starter;
+they must be introduced.
+In order to introduce failures, the system must have control of the network, disk,
+and time systems on which a distributed system relies.
+Therefore, the system must simulate this functionality whilst also injecting failure where possible.
+
+"Consistently" is another key phrase here,
+as a test must be replicable.
+% just running the system a few times doesn't confirm that everything that can go wrong has gone wrong.
+As such,
+a good testing system must not only introduce failures,
+but be able to repeatedly introduce exactly the same failures in exactly the same way.
+In the words of John Ousterhout,
+"the only thing worse than a problem that happens all the time is a problem that doesn't happen all the time."
+Therefore, our system must be \textit{deterministic}.
+
+Furthermore,
+distributed systems often run on comparatively long time-scales:
+a system may be running for months or years,
+hopefully without failure.
+However,
+it is unrealistic to spend months testing a system to confirm that such durations will not lead to failure.
+But, with control of the machine's time system calls,
+we can effectively "accelerate" time in the test,
+meaning the distributed system to be tested will act as though it has been running for such a duration,
+without interrupting development for such an extended period of time.
+
+Finally,
+distributed systems are highly varied,
+and as a result may require features or platform support not foreseen by our implementation.
+Modularity in our design allows our framework to be easily extended,
+not future-proofing it but allowing it to be future-proofed.
+}
+
+\section{Related Work}
+
+{\fontsize{12}{15}\selectfont 
+Though not a research paper,
+Redstone was inspired by work done by the TigerBeetle team,
+and their work in testing the TigerBeetle database.
+This work heavily involves hastened testing of simulated distributed system faults.
+However, the limitation of their work is that their simulator is compiled specifically for their software.
+While this setup works for their well-abstracted code that they can freely recompile to embed the simulation,
+there are many, many more distributed systems in the real world that are a poor match for this form of simulation.
+As such, we wanted to try to take the idea they built their replicator on.
+The basis of their simulator involves mocking all input and output:
+their work includes a network simulator to force network faults and latencies,
+and an in-memory storage simulator to force storage faults and latencies.
+The simulator then speeds up the clock to make these I/O operations occur far more frequently than in production,
+causing faults that may only occur once a year, or even more infrequently, to occur in a matter of days.
+Such functionality would be highly valuable in testing nearly any production distributed system,
+but, again, the context of TigerBeetle’s work is highly specific.
+As such, we wanted to develop a framework that incorporates a number of the basic simulations TigerBeetle’s simulator includes
+(namely, hastened I/O faults for network and in-memory storage),
+but one that can be generally implemented on normal systems and run a much broader range of applications.
+}
+
+% Distributed systems are fucking stupid.
+% 
+% Therefore, in order to combat this stupidity, there was the advent of a concept of "testing".
+% This dark and arcane art is wonderfully usable but falls flat when tested conditions occur only
+% rarely. The best example of such wild conditions are things like network latencies, disk
+% io errors, kernel bugs, time, and more. Everything has some level of doing a fucky wucky,
+% so our job is to make these fucky wuckies happen more often so that programmers are better able to
+% understand how their system handles such fucky wuckies
+% A paragraph of text goes here. Lots of text. Plenty of interesting
+% text. Text text text text text text text text text text text text text
+% text text text text text text text text text text text text text text
+% text text text text text text text text text text text text text text
+% text text text text text text text.
+% More fascinating text. Features galore, plethora of promises.
 
 % %-------------------------------------------------------------------------------
 % \section{Footnotes, Verbatim, and Citations}

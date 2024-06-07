@@ -24,17 +24,17 @@
 \usepackage{mathptmx}  % times roman, including math (where possible)
 
 % hopefully embeds all fonts in pdf
-\usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
+%\usepackage[T1]{fontenc}
+%\usepackage[utf8]{inputenc}
 \usepackage{pslatex}
 
 % appearance
-\usepackage[kerning,spacing]{microtype} % more compact and arguably nicer
+% \usepackage[kerning,spacing]{microtype} % more compact and arguably nicer
 
 % Uncomment the following line if you want the columns of the last page 
 % equal in size. But note that doing so may cause issues with some 
 % document-generating tools.
-% \usepackage{flushend}
+\usepackage{flushend}
 
 % refs and bib
 \usepackage{cite}               % order multiple entries in \cite{...}
@@ -118,7 +118,7 @@
 %
 % The abstract is preceded by a 12-pt bold centered heading
 \def\abstract{\begin{center}%
-{\large\bf \abstractname\vspace{-.5em}\vspace{\z@}}%
+{\large\bf \abstractname}%
 \end{center}}
 \def\endabstract{}
 
