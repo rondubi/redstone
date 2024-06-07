@@ -1,0 +1,5 @@
+paper.*
+!paper.tex
+
+*.swp
+*.swo
