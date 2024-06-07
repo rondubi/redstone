@@ -308,6 +308,44 @@ effectively only one line of code would need to be changed in order to replace t
 
 }
 
+\section{\txtrsdust System Call Interception Coverage}
+
+{\fontsize{12}{15}\selectfont 
+In the process of implementing Redstone,
+we have encountered limitations to the extent and nature of what we can properly intercept and handle.
+These fall into three categories:
+that coverage which may be attained with sufficient work,
+that coverage which is conditionally possible depending on the workload,
+and that which is impossible.
+
+The first category,
+that coverage which may be attained with sufficient work
+contains features like \texttt{epoll}, \texttt{select}, \texttt{poll}, \texttt{io\_uring},
+more exotic network protocols,
+and additional fault classes and more sophisticated fault injection algorithms.
+These can be implemented given sufficient additional time investment.
+
+The second category,
+that coverage which is conditionally possible depending on the workload,
+is more interesting, and perhaps the most common example is that of \texttt{getrandom}.
+Given that Redstone's entire reason for existence is to be as deterministic as possible,
+the naive approach would be to forward to a simulated CPRNG, such as ChaCha20,
+that is seeded by some derivation of the simulation seed.
+Unfortunately, if a program uses randomness for cases like cryptographic key generation,
+and any kind of external accesses occur,
+this indicates the presence of a significant security vulnerability due to reused keys.
+As such,
+randomness remains unimplemented,
+and should only really be implemented assuming we can guarantee that a vulnerability will not occur on a given program.
+
+The third category,
+that which is impossible,
+is introduced by restrictions on userspace.
+\texttt{mmap} is the prime example of this category.
+We have no way of replacing the page-in/page-out handling so this is also left as a passthrough. 
+
+}
+
 
 
 % Distributed systems are fucking stupid.
