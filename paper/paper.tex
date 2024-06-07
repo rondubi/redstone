@@ -99,7 +99,7 @@ note =         {\url{https://www.usenix.org/legacy/event/osdi02/tech/waldspurger
 \date{}
 
 % make title bold and 14 pt font (Latex default is non-bold, 16 pt)
-\title{\Large \bf \vrsdust{0.7cm} \hspace{0.1in} Redstone: a Modular Deterministic Simulation Testing Framework for Distributed Systems}
+\title{\Large \bf \vrsdust{0.7cm} \hspace{0.1in} Redstone: a Deterministic Simulation Testing Framework for Distributed Systems}
 
 %for single author (just remove % characters)
 \author{
@@ -126,18 +126,15 @@ note =         {\url{https://www.usenix.org/legacy/event/osdi02/tech/waldspurger
 {\fontsize{12}{15}\selectfont 
 In testing distributed systems,
 confirming a system's tolerance of faults in disks and networks is not only useful but necessary.
-Redstone, a modular deterministic simulation testing framework,
+Redstone, a deterministic simulation testing framework,
 amplifies failures in various substrates underlying a distributed system
 in order to confirm the system's ability to withstand these failures.
 We intercept calls to the kernel for the disk and the network, as well as to clock functions,
-introducing our own code.
-Determinism allows reproduction of failure conditions,
+introducing our own code. Our control over clock functions further allows us to ``accelerate" time,
+increasing ability to test faster, and to emulate the effects of clock jitter. Additionally, our framework has been made modular to be easily implemented alongside nearly any distributed system for the sake of enabling testing a breadth of distributed systems. Most importantly, though, Redstone's
+determinism allows reproduction of failure conditions,
 allowing developers to confirm, having encountered and debugged a failure,
-that their system will not fail again when confronted by identical conditions.
-Our control over clock functions further allows us to ``accelerate" time,
-increasing ability to test faster, and to emulate the effects of clock jitter.
-Finally, because Redstone is inherently modular,
-it is simple to extend and port to a wider variety of applications and platforms.
+that their system will not fail again when confronted by identical conditions. By basing program flow on a pre-chosen seed, any found faults, no matter how improbable, can be reliably replicated. We implement and evaluate our framework on a simple system in Linux to demonstrate this determinism in practice.
 
 }
 \end{abstract}
@@ -157,6 +154,21 @@ mechanisms by which to recover from both network and machine failures
 (more specifically, network latency, disk I/O failure, bugs in the kernel,
 and all manners of timing-based bugs).
 
+Distributed systems often run on comparatively long time-scales:
+a system may be running for months or years,
+hopefully without failure.
+However,
+it is unrealistic to spend months testing a system to confirm that such durations will not lead to failure.
+But, with control of the machine's time system calls,
+we can effectively "accelerate" time in the test,
+meaning the distributed system to be tested will act as though it has been running for such a duration,
+without interrupting development for such an extended period of time. 
+
+Additionally, distributed systems are highly varied,
+and as a result may require features or platform support not foreseen by our implementation.
+Modularity in our design allows our framework to be easily extended,
+not future-proofing it but allowing it to be future-proofed.
+
 Testing offers the ability to confirm that a system can withstand failures.
 Specifically, if one can introduce a failure and check that the system withstands it,
 it certainly increases the degree of trust in the system.
@@ -168,32 +180,13 @@ In order to introduce failures, the system must have control of the network, dis
 and time systems on which a distributed system relies.
 Therefore, the system must simulate this functionality whilst also injecting failure where possible.
 
-``Consistently" is another key phrase here,
+``Consistently" is the key phrase here,
 as a test must be replicable.
-% just running the system a few times doesn't confirm that everything that can go wrong has gone wrong.
-As such,
-a good testing system must not only introduce failures,
+A good testing system must not only introduce failures,
 but be able to repeatedly introduce exactly the same failures in exactly the same way.
 In the words of John Ousterhout,
 ``the only thing worse than a problem that happens all the time is a problem that doesn't happen all the time."
-Therefore, our system must be \textit{deterministic}.
-
-Furthermore,
-distributed systems often run on comparatively long time-scales:
-a system may be running for months or years,
-hopefully without failure.
-However,
-it is unrealistic to spend months testing a system to confirm that such durations will not lead to failure.
-But, with control of the machine's time system calls,
-we can effectively "accelerate" time in the test,
-meaning the distributed system to be tested will act as though it has been running for such a duration,
-without interrupting development for such an extended period of time.
-
-Finally,
-distributed systems are highly varied,
-and as a result may require features or platform support not foreseen by our implementation.
-Modularity in our design allows our framework to be easily extended,
-not future-proofing it but allowing it to be future-proofed.
+Therefore, our system must be \textit{deterministic}. To that end, our system has been designed around deterministic replication of program flow and results.
 
 }
 
@@ -346,7 +339,31 @@ We have no way of replacing the page-in/page-out handling so this is also left a
 
 }
 
+\section{\txtrsdust Randomness and Determinism}
 
+{\fontsize{12}{15}\selectfont 
+
+The core of the simulated testing framework is its randomness. By introducing randomness into whether or not a network packet is dropped or replayed, for example, the system is able to cover a breadth of inputs that are harder to anticipate when designing the distributed system. Many of these inputs will inevitably cause failures in the distributed system due to lack of cases covered by the distributed system itself. The whole purpose of distributed systems testing frameworks is to find these cases. The primary goal of Redstone though is, in addition to revealing these cases, make it simple to be able to deterministically find these “random” cases. The method by which Redstone seeks to do so is by introducing a seed. The seed is chosen before the simulator runs by the user. Then, rather whenever a random number is called in the simulation (say, 0 if a packet should be dropped or 1 if a packet should be allowed through), the value can be pseudo randomly generated based on the seed. Thus, the system covers a “random” program flow that can easily be iterated on. When an interesting program flow is discovered by the user, logs are played that cover what occurred during the run. However, instead of having to do the analysis entirely in post, the user can take note of the seed with which the simulation was run and simply run it again. Due to the guarantees provided by the seed, the execution of the program flow, and the interactions between the two, the user can expect the exact same program flow to execute and to reproduce the same logs live. Between these logs and the replicability of the program flow results, the user is able to get the randomness desired of a distributed system testing framework as well as the determinism required to understand and replay the results.
+
+}
+
+\section{\txtrsdust Evaluations}
+
+{\fontsize{12}{15}\selectfont 
+
+This section needs: at least 1 graph/table, explanations of what we evaluated and how, what the evaluation tells us.
+
+}
+
+\section{\txtrsdust Conclusion}
+
+{\fontsize{12}{15}\selectfont 
+
+Based on our results, we find the Redstone framework promising in its ability to deterministically replay results. 
+
+// Talk about limitations, otherwise desired future plans/potential future work
+
+}
 
 % Distributed systems are fucking stupid.
 % 
