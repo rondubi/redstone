@@ -30,7 +30,7 @@
 %
 %   * Revised text to pass HotCRP's auto-formatting check, with
 %     hotcrp.settings.submission_form.body_font_size=10pt, and
-%     hotcrp.settings.submission_form.line_height=12pt
+%     hotcrp.settings.submission_form.line_height=12.5pt
 %
 %   * Switched from \endnote-s to \footnote-s to match Usenix's policy.
 %
@@ -225,6 +225,27 @@ but one that can be generally implemented on normal systems and run a much broad
 
 }
 
+\section{\txtrsdust Architecture}
+
+\begin{figure}
+\includegraphics[width=0.45\textwidth]{redstone_architecture.jpeg}
+\caption{General architecture of the Redstone framework}
+\end{figure}
+
+{\fontsize{12}{15}\selectfont 
+Figure 1 provides a visual representation of the architecture powering Redstone.
+The region marked "simulator space" represents the simulator process,
+for which system calls are re-routed to the syscall implementations specified for the simulator run.
+Within the simulator process there are multiple “machines”,
+representations of physical machines that, in production, would actually be different machines.
+Each of these machine abstractions have their own simulated disk space.
+Each machine abstraction is associated with a child process,
+called a “replica”,
+of the simulator process that runs the actual functionality expected of the individual machine,
+working with the machine’s “files” (the in-memory storage mocked up by the simulator).
+
+}
+
 \section{\txtrsdust System Call Interception}
 
 {\fontsize{12}{15}\selectfont 
@@ -286,6 +307,8 @@ if ever \texttt{LD\_PRELOAD} decided to stop being so temperamental,
 effectively only one line of code would need to be changed in order to replace the simulator’s runner with a different implementation.
 
 }
+
+
 
 % Distributed systems are fucking stupid.
 % 
