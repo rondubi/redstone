@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <memory>
 #include <spdlog/spdlog.h>
+#include <string_view>
 #include <vector>
 
 namespace redstone::sim {
@@ -68,6 +69,8 @@ public:
 
     std::size_t done = 0;
 
+    fmt::println("output: '{}'", std::string_view{(const char *)buf.data(), 4});
+
     while (done < bytes) {
       std::span tmp = buf;
 
@@ -75,14 +78,16 @@ public:
         tmp = tmp.subspan(0, bytes);
       }
 
-      spdlog::trace("f1");
       auto res = load(tmp);
-      spdlog::trace("f2");
       if (res < 0) {
         return res;
       }
 
-      std::fwrite(tmp.data(), 1, tmp.size_bytes(), stdout);
+      fmt::println("output: '{}'",
+                   std::string_view{(const char *)tmp.data(), tmp.size()});
+
+      fmt::println("output: {}",
+                   std::fwrite(tmp.data(), 1, tmp.size_bytes(), stdout));
 
       done += tmp.size_bytes();
     }

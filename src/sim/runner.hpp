@@ -22,7 +22,6 @@ struct runner_options {
   std::string path;
   std::vector<std::string> args;
   std::vector<std::string> env;
-  simulator *simulator;
   machine *machine;
 };
 

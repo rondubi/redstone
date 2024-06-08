@@ -41,9 +41,17 @@ public:
     }
   }
 
+  std::uint64_t lseek(std::uint64_t pos);
+
   std::int64_t read_at(std::uint64_t pos, std::span<std::byte> buf);
 
+  std::int64_t read(std::span<std::byte> buf);
+  std::int64_t write(std::span<const std::byte> buf);
+
   std::int64_t write_at(std::uint64_t pos, std::span<const std::byte> buf);
+
+  int read_exact(std::span<std::byte> buf);
+  int write_all(std::span<const std::byte> buf);
 
   std::int64_t read_exact_at(std::uint64_t pos, std::span<std::byte> buf);
   std::int64_t write_all_at(std::uint64_t pos, std::span<const std::byte> buf);
@@ -53,4 +61,8 @@ private:
 };
 
 file open(const char *path, int mode, int prot);
+
+class child;
+
+file proc_mem(sys::child &child, int mode);
 } // namespace redstone::sys

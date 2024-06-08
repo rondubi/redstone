@@ -7,3 +7,6 @@
 [submodule "deps/function_ref"]
 	path = deps/function_ref
 	url = https://github.com/TartanLlama/function_ref.git
+[submodule "deps/tomlplusplus"]
+	path = deps/tomlplusplus
+	url = https://github.com/marzer/tomlplusplus.git

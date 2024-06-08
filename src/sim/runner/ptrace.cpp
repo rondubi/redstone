@@ -1,5 +1,21 @@
 #include "sim/runner.hpp"
 
+#include <cassert>
+#include <cerrno>
+#include <chrono>
+#include <condition_variable>
+#include <csignal>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
+#include <fcntl.h>
+#include <iostream>
+#include <memory>
+#include <mutex>
+#include <optional>
+#include <span>
+#include <stdexcept>
 #include <sys/auxv.h>
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
@@ -8,18 +24,9 @@
 #include <sys/types.h>
 #include <sys/user.h>
 #include <sys/wait.h>
-#include <unistd.h>
-
-#include <condition_variable>
-#include <csignal>
-#include <cstdint>
-#include <memory>
-#include <mutex>
-#include <optional>
-#include <span>
-#include <stdexcept>
 #include <system_error>
 #include <thread>
+#include <unistd.h>
 #include <variant>
 #include <vector>
 
@@ -34,6 +41,38 @@
 #include "sys/ptrace.hpp"
 
 namespace redstone::sim {
+
+class barrier {
+public:
+  explicit barrier(std::size_t count) : count_{count} {}
+
+  void wait() {
+    std::unique_lock lock{mutex_};
+    assert(current_ != 0);
+
+    current_--;
+
+    if (current_ == 0) {
+      current_ = count_;
+      epoch_++;
+      cond_.notify_all();
+      return;
+    }
+
+    auto epoch = epoch_;
+
+    while (epoch == epoch_) {
+      cond_.wait(lock);
+    }
+  }
+
+private:
+  std::size_t count_;
+  std::size_t current_ = count_;
+  std::size_t epoch_ = 0;
+  std::mutex mutex_;
+  std::condition_variable cond_;
+};
 namespace {
 sys::child spawn(const runner_options &options) {
   if (options.args.at(0) != options.path) {
@@ -75,7 +114,6 @@ sys::child spawn(const runner_options &options) {
 }
 
 void replace_syscall_with_result(sys::child &child, uint64_t result) {
-
   // Overwrite syscall with SYS_gettid (noop, essentially)
   auto regs = sys::ptrace::get_regs(child);
   regs.orig_rax = SYS_gettid;
@@ -108,21 +146,15 @@ void handle_trapped(sys::child &child, replica &replica) {
     return;
   }
 
-  spdlog::trace("lol2");
-
   auto result = hook(replica, info.entry.args);
-
-  spdlog::trace("lol12");
 
   switch (result.kind) {
   case redstone::hook::hook_result_kind::handled:
-    spdlog::trace("lol3");
     spdlog::trace("simulated syscall {}, result {}",
                   hook::syscall_name(info.entry.nr), result.handled);
     replace_syscall_with_result(child, result.handled);
     return;
   case redstone::hook::hook_result_kind::passthrough:
-    spdlog::trace("lol4");
     return;
   }
 }
@@ -208,17 +240,48 @@ struct ptrace_runner_handle : public runner_handle {
   }
 
   int write_memory(uintptr_t ptr, std::span<const std::byte> data) final {
-    auto res = memfd.write_all_at(ptr, data);
-    if (res < 0)
-      return res;
+    unsigned long word;
+
+    while (data.size() >= sizeof(long)) {
+      memcpy(&word, data.data(), sizeof(word));
+      ::ptrace(PTRACE_POKEDATA, child.pid(), ptr, word);
+      data = data.subspan(sizeof(word));
+      ptr += sizeof(long);
+    }
+    if (!data.empty()) {
+      auto word = ::ptrace(PTRACE_PEEKDATA, child.pid(), ptr, 0);
+      memcpy(&word, data.data(), data.size());
+      ::ptrace(PTRACE_POKEDATA, child.pid(), ptr, word);
+    }
     return 0;
   }
 
   int read_memory(uintptr_t ptr, std::span<std::byte> data) final {
-    auto res = memfd.read_exact_at(ptr, data);
-    if (res < 0)
-      return res;
+    while (data.size() >= sizeof(long)) {
+      auto word = ::ptrace(PTRACE_PEEKDATA, child.pid(), ptr, 0);
+      memcpy(data.data(), &word, sizeof(word));
+      data = data.subspan(sizeof(long));
+      ptr += sizeof(long);
+    }
+    if (!data.empty()) {
+      auto word = ::ptrace(PTRACE_PEEKDATA, child.pid(), ptr, 0);
+      memcpy(data.data(), &word, data.size());
+    }
     return 0;
+    // assert(memfd);
+
+    // assert(memfd.lseek(ptr) == ptr);
+
+    // auto res = memfd.read_exact(data);
+    // if (res < 0) {
+    //   std::cerr << "failed to read process memory "
+    //             << std::error_code{static_cast<int>(-res),
+    //                                std::generic_category()}
+    //             << std::endl;
+
+    //   return res;
+    // }
+    // return 0;
   }
 
   std::mutex mutex;
@@ -238,30 +301,36 @@ struct overloaded : Ts... {
 template <class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 
-void ptrace_worker(std::shared_ptr<ptrace_runner_handle> handle,
-                   const runner_options &options,
-                   std::condition_variable &done) {
+struct worker_args {
+  std::shared_ptr<ptrace_runner_handle> handle;
+  const runner_options *options;
+  barrier *barrier;
+};
+
+void ptrace_worker(worker_args args) {
   int status;
 
-  auto &child = handle->child;
-  child = spawn(options);
+  auto &child = args.handle->child;
+  child = spawn(*args.options);
+  args.handle->memfd = sys::proc_mem(child, O_RDWR);
+  assert(args.handle->memfd);
 
-  simulator *sim = options.simulator;
-  assert(sim);
-
-  machine *machine = options.machine;
+  machine *machine = args.options->machine;
   assert(machine);
 
-  auto replica = machine->current_replica();
-
-  // child.wait();
   sys::ptrace::set_options(child, PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACEEXEC);
 
-  done.notify_all();
+  args.barrier->wait();
 
   // https://stackoverflow.com/questions/8280014/disabling-vsyscalls-in-linux/52402306#52402306
   wait_until_execve(child);
   remove_vdso(child);
+
+  auto replica = machine->current_replica();
+  while (!replica) {
+    printf("replica = null\n");
+    replica = machine->current_replica();
+  }
 
   for (;;) {
 
@@ -271,8 +340,8 @@ void ptrace_worker(std::shared_ptr<ptrace_runner_handle> handle,
     auto state = child.state().value();
 
     {
-      std::unique_lock lock{handle->mutex};
-      handle->saved_state = state;
+      std::unique_lock lock{args.handle->mutex};
+      args.handle->saved_state = state;
     }
 
     auto should_return =
@@ -280,9 +349,9 @@ void ptrace_worker(std::shared_ptr<ptrace_runner_handle> handle,
                        [](sys::child::running v) { return false; },
                        [&replica, &child](sys::child::stopped v) {
                          if (v.signal == (0x80 | SIGTRAP)) {
+                           assert(replica);
                            handle_trapped(child, *replica);
                          }
-                         spdlog::trace("lol1");
                          return false;
                        },
                        [](sys::child::terminated v) { return true; },
@@ -302,14 +371,27 @@ std::shared_ptr<sim::runner_handle> ptrace_run(const runner_options &options) {
 
   std::condition_variable cond;
 
-  handle->worker = std::thread{
-      [handle, &options, &cond] { ptrace_worker(handle, options, cond); }};
+  barrier b{2};
+  worker_args args{
+      .handle = handle,
+      .options = &options,
+      .barrier = &b,
+  };
 
-  {
-    std::unique_lock lock{handle->mutex};
-    cond.wait(lock);
-  }
+  handle->worker = std::thread{[&args] {
+    try {
+      ptrace_worker(std::move(args));
+    } catch (const std::system_error &err) {
+      if (err.code() == std::error_code{ESRCH, std::generic_category()}) {
+        spdlog::warn("child crashed");
+        return;
+      }
+      fmt::println("caught error: {}", err.code().value());
+      throw;
+    }
+  }};
 
+  b.wait();
   return handle;
 }
 } // namespace redstone::sim

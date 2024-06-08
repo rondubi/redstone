@@ -59,12 +59,17 @@ static std::vector<hook> build_hook_table() {
       {SYS_write, sys_write},
       {SYS_read, sys_read},
       {SYS_close, sys_close},
+      {SYS_socket, sys_socket},
+      {SYS_sendto, sys_sendto},
+      {SYS_recvfrom, sys_recvfrom},
+      {SYS_connect, sys_connect},
+      {SYS_bind, sys_bind},
+      {SYS_clock_gettime, sys_clock_gettime},
+      {SYS_clock_nanosleep, sys_clock_nanosleep},
   };
 
   for (auto passthrough : passthroughs) {
     std::pair<uint64_t, hook> pair{passthrough, explicit_passthrough};
-
-    fmt::println("passthrough {}", syscall_name(passthrough));
     map.push_back(pair);
   }
 

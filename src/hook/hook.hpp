@@ -51,7 +51,7 @@ struct hook_result {
       : kind{hook_result_kind::handled}, handled{h.result} {}
   hook_result(error e)
       : kind{hook_result_kind::handled},
-        handled{static_cast<uint64_t>(e.cerrno)} {
+        handled{static_cast<uint64_t>(-e.cerrno)} {
     assert(0 <= e.cerrno);
   }
 };

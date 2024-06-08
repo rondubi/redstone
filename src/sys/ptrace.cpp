@@ -1,3 +1,5 @@
+#include <cassert>
+#include <cstdio>
 #include <sys/ptrace.h>
 #include <system_error>
 
@@ -8,8 +10,12 @@ namespace redstone::sys::ptrace {
 namespace {
 template <typename T, typename U>
 void ptrace_child(child &child, enum __ptrace_request req, T addr, U data) {
-  if (0 > ::ptrace(req, child.pid(), addr, data))
+  assert(child);
+
+  if (0 > ::ptrace(req, child.pid(), addr, data)) {
+    printf("command: %d\n", req);
     throw std::system_error{errno, std::generic_category(), "ptrace failed"};
+  }
 }
 } // namespace
 
@@ -17,7 +23,7 @@ void syscall(child &c) { ptrace_child(c, PTRACE_SYSCALL, 0, 0); }
 
 user_regs get_regs(child &c) {
   user_regs regs;
-  ptrace_child(c, PTRACE_GETREGS, 0, regs);
+  ptrace_child(c, PTRACE_GETREGS, 0, &regs);
   return regs;
 }
 

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <chrono>
+#include <cstdio>
+#include <random>
 
 #include "random/rng.hpp"
 
@@ -19,7 +21,8 @@ struct net_fault_options {
 
   template <typename Rng>
   bool should_drop(Rng &&rng) const {
-    return random::gen_bool(rng, p_drop);
+    std::bernoulli_distribution dis{p_drop};
+    return dis(rng);
   }
 
   template <typename Rng>

@@ -1,0 +1,19 @@
+seed = 0xfeedbeef
+
+[time]
+scale = 0.0001
+
+[net]
+min_latency_ns = 0
+max_latency_ns = 0
+drop_chance = 0.4
+replay_chance = 0.3
+
+[[replica]]
+path = "./build/demo-echo"
+args = []
+env = {}
+prime = true
+
+[[replica]]
+path = "./build/demo-squawk"
