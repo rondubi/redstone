@@ -1,0 +1,13 @@
+seed = 0xfeedbeef
+
+[time]
+scale = 1.0
+
+[net]
+min_latency_ns = 0
+max_latency_ns = 0
+drop_chance = 0.0
+replay_chance = 0.0
+
+[[replica]]
+path = "./build/socket"
