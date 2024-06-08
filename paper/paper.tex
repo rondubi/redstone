@@ -63,27 +63,6 @@
 \usepackage{setspace}
 \linespread{1.25}
 
-%-------------------------------------------------------------------------------
-\begin{filecontents}{\jobname.bib}
-%-------------------------------------------------------------------------------
-@Book{arpachiDusseau18:osbook,
-author =       {Arpaci-Dusseau, Remzi H. and Arpaci-Dusseau Andrea C.},
-title =        {Operating Systems: Three Easy Pieces},
-publisher =    {Arpaci-Dusseau Books, LLC},
-year =         2015,
-edition =      {1.00},
-note =         {\url{http://pages.cs.wisc.edu/~remzi/OSTEP/}}
-}
-@InProceedings{waldspurger02,
-author =       {Waldspurger, Carl A.},
-title =        {Memory resource management in {VMware ESX} server},
-booktitle =    {USENIX Symposium on Operating System Design and
-Implementation (OSDI)},
-year =         2002,
-pages =        {181--194},
-note =         {\url{https://www.usenix.org/legacy/event/osdi02/tech/waldspurger/waldspurger.pdf}}}
-\end{filecontents}
-
 \newcommand{\vrsdust}[1]{\includegraphics[height=#1]{redstone_dust.png}}
 % \newcommand{\vrswire}[1]{\includegraphics[height=#1]{redstone_wire.png}}
 
@@ -198,7 +177,7 @@ Therefore, our system must be \textit{deterministic}. To that end, our system ha
 
 {\fontsize{12}{15}\selectfont 
 Although their work is not a research paper,
-the TigerBeetle team has provided inspiration to Redstone in their work developing a testing system for their database.
+the TigerBeetle \cite{tigerbeetle} team has provided inspiration to Redstone in their work developing a testing system for their database.
 This work heavily involved hastened testing of simulated distributed system faults.
 However, a significant limiting factor in their work as compared to ours is that the simulator is compiled specifically for the software being tested.
 While this setup works for their well-abstracted code that they can freely recompile to embed the simulation,
@@ -231,7 +210,7 @@ Figure 1 provides a visual representation of the architecture powering Redstone.
 The box marked config represents the configuration settings of the entire simulator (particularly settings that dictate probabilities of event occurences during simulation such as packet dropping). The region marked "simulator space" represents the simulator process,
 for which system calls are re-routed to the syscall implementations specified for the simulator run.
 Within the simulator process there are multiple “machines”,
-representations of physical machines that, in production, would actually be different machines, and a root rng. The root rng represents the seed and alters program flow.
+representations of physical machines that, in production, would actually be different machines, and a root RNG. The root RNG represents the seed and alters program flow.
 Each of these machine abstractions have their own simulated disk space.
 Each machine abstraction is associated with a child process,
 called a “replica”,
@@ -397,6 +376,25 @@ For example, in a workload where the drop chance was set to 40$\%$, we see many 
 \section{\txtrsdust Conclusion}
 
 {\fontsize{12}{15}\selectfont 
+Redstone introduces a deterministic simulation testing framework for distributed systems,
+intercepting system calls and injecting faults in all necessary subsystems,
+including network, disk, and clocks, dependent on a seed.
+We show that,
+although we depend on a comparatively-slow \texttt{ptrace}-based design that introduces significant overhead,
+we are able to both introduce faults and deterministically replicate failure conditions.
+
+}
+
+\section{\txtrsdust Works Consulted}
+
+{\fontsize{12}{15}\selectfont 
+\begin{itemize}
+\item https://tigerbeetle.com/blog
+\item https://jepsen.io/analyses
+\item https://man7.org/linux/man-pages/man2/ptrace.2.html
+\item https://www.man7.org/linux/man-pages/man8/ld.so.8.html
+\item https://man7.org/linux/man-pages/man7/vdso.7.html
+\end{itemize}
 
 }
 
@@ -427,11 +425,13 @@ For example, in a workload where the drop chance was set to 40$\%$, we see many 
 % section.
 
 %-------------------------------------------------------------------------------
-\bibliographystyle{plain}
-\bibliography{\jobname}
+% \bibliographystyle{plain}
+% \bibliography{\jobname}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \end{document}
+
+\end{thebibliography}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%  LocalWords:  endnotes includegraphics fread ptr nobj noindent
