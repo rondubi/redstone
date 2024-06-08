@@ -343,8 +343,9 @@ We have no way of replacing the page-in/page-out handling so this is also left a
 \section{\txtrsdust Randomness and Determinism}
 
 {\fontsize{12}{15}\selectfont 
-The core of the simulated testing framework is its test injection.
-By introducing randomness into whether or not a network packet is dropped or replayed,
+The core of the simulated testing framework is its fault injection.
+By randomly (over the randomness of seed generation, rather than just randomly per-run)
+deciding whether a network will drop a packet,
 for example, the system is able to cover a breadth of ``environmental conditions",
 so to speak,
 that are harder to anticipate when designing the distributed system.
@@ -381,8 +382,34 @@ the user is able to get the randomness desired of a distributed system testing f
 \section{\txtrsdust Evaluation}
 
 {\fontsize{12}{15}\selectfont 
-\texttt{NOTE: we are in the process of writing up this section, and will submit this in an amended version of the writeup tomorrow morning.}
+% \texttt{NOTE: we are in the process of writing up this section, and will submit this in an amended version of the writeup tomorrow morning.}
 % This section needs: at least 1 graph/table, explanations of what we evaluated and how, what the evaluation tells us.
+We tested the Redstone system on two benchmark tasks,
+compute and socket.
+The compute task performs a lot of computation and merely confirms that Redstone doesn't get in the way when it isn't called.
+The data seem to back this conclusion.
+The socket task repeatedly opens and closes sockets,
+in effect testing nothing but the overhead of repeated syscalls.
+As such, we see that the overhead on syscalls using Redstone is nearly ten times what it is otherwise.
+However, in the socket task, only about 6 nanoseconds were spent in Redstone proper:
+the rest is the ovehead of using \texttt{ptrace}, a debugging tool,
+as our way of intercepting calls.
+Essentially, we're trying to drive an eighteen-wheeler through the Formula 1.
+
+\textbf{Average User Time}
+\begin{tabular}{|l|r r| r|}
+\hline
+Workload & Linux (ns) &  Redstone (ns) & Ratio \\
+\hline
+Compute & 1,122,191,202 & 1,158,614,972 & 1.0325 \\
+Socket  & 2,333 & 21,804 & 9.3459 \\
+\hline
+\end{tabular}
+
+\begin{figure}[h]
+\includegraphics[width=0.45\textwidth]{redstone_performance.png}
+\caption{Ratio of time to perform benchmark tasks between Redstone and vanilla Linux}
+\end{figure}
 
 }
 
