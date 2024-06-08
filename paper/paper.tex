@@ -228,15 +228,15 @@ but one that can be generally implemented on normal systems and run a much broad
 
 {\fontsize{12}{15}\selectfont 
 Figure 1 provides a visual representation of the architecture powering Redstone.
-The region marked "simulator space" represents the simulator process,
+The box marked config represents the configuration settings of the entire simulator (particularly settings that dictate probabilities of event occurences during simulation such as packet dropping). The region marked "simulator space" represents the simulator process,
 for which system calls are re-routed to the syscall implementations specified for the simulator run.
 Within the simulator process there are multiple “machines”,
-representations of physical machines that, in production, would actually be different machines.
+representations of physical machines that, in production, would actually be different machines, and a root rng. The root rng represents the seed and alters program flow.
 Each of these machine abstractions have their own simulated disk space.
 Each machine abstraction is associated with a child process,
 called a “replica”,
 of the simulator process that runs the actual functionality expected of the individual machine,
-working with the machine’s “files” (the in-memory storage mocked up by the simulator).
+working with the machine’s “files” (the in-memory storage mocked up by the simulator). Additionally, the replicas effectively mock their own files, file descriptor tables, their own clock scales/jitter, and their own list of sockets.
 
 }
 
@@ -343,43 +343,11 @@ We have no way of replacing the page-in/page-out handling so this is also left a
 \section{\txtrsdust Randomness and Determinism}
 
 {\fontsize{12}{15}\selectfont 
-The core of the simulated testing framework is its fault injection.
-By randomly (over the randomness of seed generation, rather than just randomly per-run)
-deciding whether a network will drop a packet,
-for example, the system is able to cover a breadth of ``environmental conditions",
-so to speak,
-that are harder to anticipate when designing the distributed system.
-
-Many of these ``environmental conditions"
-will inevitably cause failures in the distributed system due to insufficient edge case handling by the implementers of the system.
-This is a feature, not a bug.
-The whole purpose of distributed systems testing frameworks is to find these cases.
-
-The primary goal of Redstone, however,
-in addition to revealing these cases,
-is to make it simple to be able to deterministically find these “random” cases.
-The method by which Redstone seeks to do so is by introducing a seed.
-
-The seed is chosen by the user before the simulator runs.
-Wherever randomness is necessary
-% Then, rather whenever a random number is called in the simulation
-(say, to determine whether a packet should be dropped),
-the value can be pseudo-randomly generated based on the seed.
-
-Thus, the system performs a ``random" and yet totally deterministic program flow,
-which can be used in development for iteration on the tested system.
-When an interesting program flow is discovered by the user,
-instead of just relying on logs after the fact,
-the user can take note of the seed with which the simulation was run and simply run it again.
-
-Due to the guarantees provided by the seed, the execution of the program flow, and the interactions between the two,
-the user can expect the exact same program flow to execute and to reproduce the same sequence of events as the one they see in their logs.
-Between these logs and the replicability of the program flow results,
-the user is able to get the randomness desired of a distributed system testing framework as well as the determinism required to understand and replay the results.
+The core of the simulated testing framework is its randomness. By introducing randomness into whether or not a network packet is dropped or replayed, for example, the system is able to cover a breadth of inputs that are harder to anticipate when designing the distributed system. Many of these inputs will inevitably cause failures in the distributed system due to lack of cases covered by the distributed system itself. The whole purpose of distributed systems testing frameworks is to find these cases. The primary goal of Redstone though is, in addition to revealing these cases, make it simple to be able to deterministically find these “random” cases. The method by which Redstone seeks to do so is by introducing a seed. The seed is chosen before the simulator runs by the user. Then, rather whenever a random number is called in the simulation (say, 0 if a packet should be dropped or 1 if a packet should be allowed through), the value can be derived from that seed using a pseudo random number generator. In our case, we use Xoshiro256**. Thus, the system covers a “random” program flow that can easily be iterated on. When an interesting program flow is discovered by the user, logs are played that cover what occurred during the run. However, instead of having to do the analysis entirely in post, the user can take note of the seed with which the simulation was run and simply run it again. Due to the guarantees provided by the seed, the execution of the program flow, and the interactions between the two, the user can expect the exact same program flow to execute and to reproduce the same logs live. Between these logs and the replicability of the program flow results, the user is able to get the randomness desired of a distributed system testing framework as well as the determinism required to understand and replay the results.
 
 }
 
-\section{\txtrsdust Evaluation}
+\section{\txtrsdust Timed Performance}
 
 {\fontsize{12}{15}\selectfont 
 % \texttt{NOTE: we are in the process of writing up this section, and will submit this in an amended version of the writeup tomorrow morning.}
@@ -413,13 +381,22 @@ Socket  & 2,333 & 21,804 & 9.3459 \\
 
 }
 
+\section{\txtrsdust Determinism Evaluation}
+
+{\fontsize{12}{15}\selectfont 
+
+To ensure that Redstone is deterministic, we ran several tests with a simulated workload under several sets of fault parameters. In each test, we ran Redstone
+on with a single set of fault parameters (including seed) several times, comparing the output of each run to ensure that packet orderings and relative timings remained the same. Then, for that same set of fault parameters, we ran the simulator again but with a varying time scale and again compared, using ranges from 1 to 0.001 time scales. All outputs from a given seed + fault parameter list remained identical. Changes to the seed or the fault parameters likewise created a different output that was repeated across runs.
+
+The primary simulated workload was a server that received packets from a separate process, both running under Redstone. The server logged the time of arrival and the ordering of each packet number, and from those logs we are able to see that they are both identical across runs, and that faults are very visible when the probabilities rise.
+
+For example, in a workload where the drop chance was set to 40$\%$, we see many gaps in packet numbers arriving to the server, all in the same place by checking the diffs.
+
+}
+
 \section{\txtrsdust Conclusion}
 
 {\fontsize{12}{15}\selectfont 
-\texttt{NOTE: we are in the process of writing up this section, and will submit this in an amended version of the writeup tomorrow morning.}
-% Based on our results, we find the Redstone framework promising in its ability to deterministically replay results. 
-
-% // Talk about limitations, otherwise desired future plans/potential future work
 
 }
 
